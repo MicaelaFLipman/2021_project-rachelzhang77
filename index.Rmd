@@ -1,48 +1,49 @@
 ---
-title: "My Final Project Template"
-author: Your name here
+title: "Gentrification and Crime in Buffalo, NY"
+author: Rachel Zhang
 subtitle: Subtitle here if desired
 ---
 
 # Introduction
 
-[~ 200 words]
+    The surgent growth of gentrification across U.S. cities since the 1970s has received increasing attention from American society. Gentrification has significantly changed — for better or worse — the neighborhood socioeconomic characteristics. Besides, this city redevelopment trend has nearly coincided with the U.S. crime changes in the late 20th century — the crime rates in major U.S. cities increased from the 1960s to 1980s, and they experienced a considerable drop during the 1990s (Barton 2016). Considering the widespread spatial phenomenon and the growing importance of crime occurrences in the United States, it is essential to explore the potential association between these two compelling trends.
+    Due to the inconsistent operationalizations and limited methodological approaches in the fields of gentrification and crime, the few studies on their relationship have drawn conflicting conclusions. Several studies have concluded that there is a positive relationship between gentrification and crime due to the incomplete neighborhood transformation, the disruption of the established social order, or the aggregation of suitable and lucrative targets — the move-in middle-class residents, in gentrifying inner-city neighborhoods (Covington and Taylor 1989). Other scholars have argued that gentrification has accompanied with the decreasing neighborhood crime rates by establishing relatively stable areas with the influx of economically advantaged residents (Barton 2016; MacDonald and Stokes 2020; Papachristos et al. 2011). My research intends to fill the research gaps by examining the overall association between gentrification using a comprehensive gentrification measurement. I also examine the association between specific gentrification mechanisms and crime. Specifically, my study attempts to examine the impact of different degrees and aspects of gentrification on the neighborhood crime rate at the census tract level in Buffalo, NY, by using a modified quantitative measurement of gentrification typology.
 
-Clearly stated background and questions / hypotheses / problems being addressed. Sets up the analysis in an interesting and compelling way.
 
-# Materials and methods
+# Data and Methods
 
-[~ 200 words]
+    The current study examined the association of gentrification and seven (?) forms of violent crime in Buffalo, NY for the period 2011 to 2019 at census tract level. This objective was achieved by utilizing two steps. First, the quantitative operationalization of gentrification and the typology of gentrification degree were based on changes in sociodemographic and socioeconomic characteristics in Buffalo, NY (79 tracts) from 2011 to 2019 American Community Survey 1-year Estimate data. Second, correlation in gentrification and crime over this 9-year period was examined to determine whether the association in Buffalo (79 tracts) was varied over time, which was important given the dynamic nature of gentrification. The Ordinary Least Squares Regression (OLS), controlling between-unit variation, is applied here to examine the association between gentrification and crime.
 
-Narrative: Clear narrative description of the data sources and methods. Includes data from at least two sources that were integrated / merged in R.
+Dependent Variables: Violent Index Crimes
+  	For the crime data, I use the open dataset called Crime Incidents by Open Data Buffalo with public access on their official website (data.buffalony.gov), where data is provided by the Buffalo Police Department. This dataset is updated daily and provides the crime incidents in Buffalo at the census tract level from 2009 to 2021.
+    The dependent variable is the total crime rate per 1,000 tract residents in Buffalo from 2011-2019. I also examined seven different violent crime and property crime, including assault, robbery, homicide, sexual assault, sexual offense, theft, and theft of vehicle. 
 
-Code: The code associated with the project is well organized and easy to follow. Demonstrates mastery of R graphics and functions.
+Operationalization of Gentrification
+    To measure the stages of gentrification, I use a case study of Buffalo, New York with 79 census tracts. Specifically, I use the American Community Survey 1-year estimates from 2011 to 2019. To further evaluate the influence of various gentrification stages, I also conduct a gentrification stage analysis by creating three major gentrification indexes, including the presence of vulnerable populations, gentrification-related demographic changes, and housing condition changes. Moreover, I make use of a neighborhood typology for categorizing the specific stages. These measures are shown in Tables 1 and 2, respectively.
 
-Data: The underlying data are publicly accessible via the web and downloaded/accessed within the Rmd script. If you want to use your own data, you must make it available on a website (e.g. Figshare) so that others are able to re-run your code.
 
-You can do bullets like this:
 
-* The first most important thing
-* The second most important thing
-* The third most important thing
-
-You can do numbers like this:
-
-1. The first most important thing
-2. The second most important thing
-3. The third most important thing
 
 See [http://rmarkdown.rstudio.com/](http://rmarkdown.rstudio.com/) for all the amazing things you can do.
 
 
 Here's my first code chunk.
-```{r}
-1+2
+```{r,message=F, warning=F}
+library(tidycensus)
+library(sf)
+library(tidyverse)
+library(haven)
+library(viridis)
+library(leaflet)
+library(tidyr)
+library(kableExtra)
+
+census_api_key ("7e9b9dfdae5d56fbf2a5c8e243c74bccbe74af98", install=TRUE,overwrite = TRUE)
+
 ```
 
-Load any required packages in a code chunk (you may need to install some packages):
 
-```{r, message=F, warning=F}
+```{r, message=F, warning=F,results='hide'}
 library(tidyverse)
 library(leaflet)
 library(kableExtra)
@@ -50,24 +51,489 @@ knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling
 ```
 
 ## Download and clean all required data
-```{r}
-n=20
-data=data.frame(x=runif(n,-180,180),
-                y=runif(n,-60,60),
-                size = runif(n, 5, 20),
-                category = factor(
-                  sample(letters[1:5], n, replace = TRUE)
-                  ),
-                value = rnorm(n))
+```{r,message=F, warning=F}
+year=2012:2019
+tract.list=NULL
+county.list=NULL
+tract_county_merge.list=NULL
+for (i in 1:8){
+  d1= get_acs(geography = "tract", state = "NY",
+              county = "Erie", variables = c(TotalP_t="B01001_001",
+                TotalRace_t= "B02001_001",
+                                             White_t="B02001_002",
+                                             nonHispanicWhite_t="B03002_003",
+                                             nonHispanicWhiteTotal_t="B03002_001",
+                                             Homeowner_t="B25003_002",
+                                             renterHS_t="B25003_003",
+                                             TenureHSTotal_t="B25003_001",
+                                             collegedegree_t="B15003_022",
+                                             degreeTotal_t="B15003_001",
+                                             # HSIncome_t=c("B19001_001","B19001_002","B19001_003","B19001_004","B19001_005","B19001_006","B19001_007","B19001_008","B19001_009"),##how to do it in a quicker way??
+                                             medianHSincome_t="B19013_001",
+                                             medianHValue_t="B25077_001",
+                                             medianGRent_t="B25064_001",
+                                             Poverty_t="B17001_002",
+                                             PovertyTotal_t="B17001_001",
+                                             ForeignBorn_t="B05002_009",
+                                             NavitityTotal_t="B05002_001",
+                                             Profjobs_t="C24070_010",
+                                             jobsTotal_t="C24070_001"
+              ),year=year[i],geometry = TRUE,
+              cache_table=T)
+  # create a county column in tract dataset for the later merge with county data.
+  d1$CountyGEOID=36029
+  d1$Year=year[i]
+  tract.list[i]=list(d1)
+  
+  d2 = get_acs(geography = "county", state = "NY",
+               county = "Erie", variables = c(TotalP_c="B01001_001",
+                 TotalRace_c= "B02001_001",
+                                              White_c="B02001_002",
+                                              nonHispanicWhite_c="B03002_003",
+                                              nonHispanicWhiteTotal_c="B03002_001",
+                                              Homeowner_c="B25003_002",
+                                              renterHS_c="B25003_003",
+                                              TenureHSTotal_c="B25003_001",
+                                              collegedegree_c="B15003_022",
+                                              degreeTotal_c="B15003_001",
+                                              # HSIncome_c=c("B19001_001","B19001_002","B19001_003","B19001_004","B19001_005","B19001_006","B19001_007","B19001_008","B19001_009"),##how to do it in a quicker way??
+                                              medianHSincome_c="B19013_001",
+                                              medianHValue_c="B25077_001",
+                                              medianGRent_c="B25064_001",
+                                              Poverty_c="B17001_002",
+                                              PovertyTotal_c="B17001_001",
+                                              ForeignBorn_c="B05002_009",
+                                              NavitityTotal_c="B05002_001",
+                                              Profjobs_c="C24070_010",
+                                              jobsTotal_c="C24070_001"
+               ),year=year[i],geometry = FALSE,
+               cache_table=T)
+  
+  county.list[i]=list(d2)
+  
+  ###make the tract data into wide format from the long format
+  
+  
+  d1_noMOE=subset(d1,select=-moe)
+  d1=spread(d1_noMOE, key = variable, value = estimate)
+  
+  
+  ###make the county data into wide format from the long format
+  d2_noMOE=subset(d2,select=-moe)
+  d2=spread(d2_noMOE, key = variable, value = estimate)
+  
+  
+  #then merge the county dataset with the tract dataset
+  d_merge=merge(d1,d2,
+                by.x = "CountyGEOID", by.y = "GEOID")
+  str(d_merge)
+  
+  tract_county_merge.list[i]=list(d_merge)
+}
+
+
+##change it to dataframe
+data2012=data.frame(tract_county_merge.list[1])
+data2013=data.frame(tract_county_merge.list[2])
+data2014=data.frame(tract_county_merge.list[3])
+data2015=data.frame(tract_county_merge.list[4])
+data2016=data.frame(tract_county_merge.list[5])
+data2017=data.frame(tract_county_merge.list[6])
+data2018=data.frame(tract_county_merge.list[7])
+data2019=data.frame(tract_county_merge.list[8])
+
+#####add the 2011&2010 data since they lack variables about education, I manually imported them from social explorer (https://www.socialexplorer.com/reports-beta/report/a5c293b8-2709-11ec-aafd-132ea339dce2).
+###2011
+tract_2011 = get_acs(geography = "tract", state = "NY", 
+                     county = "Erie", variables = c(TotalP_t="B01001_001",
+                       TotalRace_t= "B02001_001",
+                                                    White_t="B02001_002",
+                                                    nonHispanicWhite_t="B03002_003",
+                                                    nonHispanicWhiteTotal_t="B03002_001",
+                                                    Homeowner_t="B25003_002",
+                                                    renterHS_t="B25003_003",
+                                                    TenureHSTotal_t="B25003_001",
+                                                    ##collegedegree_t="B15003_022",
+                                                    ##degreeTotal_t="B15003_001", no B15003 variable in acs 2011 dataset
+                                                    medianHSincome_t="B19013_001",
+                                                    medianHValue_t="B25077_001",
+                                                    medianGRent_t="B25064_001",
+                                                    Poverty_t="B17001_002",
+                                                    PovertyTotal_t="B17001_001",
+                                                    ForeignBorn_t="B05002_009",
+                                                    NavitityTotal_t="B05002_001",
+                                                    Profjobs_t="C24070_010",
+                                                    jobsTotal_t="C24070_001"
+                     ),year=2011,geometry = TRUE, 
+                     cache_table=T)
+
+
+county_2011 = get_acs(geography = "county", state = "NY", 
+                      county = "Erie", variables = c(TotalP_c="B01001_001",
+                        TotalRace_c= "B02001_001",
+                                                     White_c="B02001_002",
+                                                     nonHispanicWhite_c="B03002_003",
+                                                     nonHispanicWhiteTotal_c="B03002_001",
+                                                     Homeowner_c="B25003_002",
+                                                     renterHS_c="B25003_003",
+                                                     TenureHSTotal_c="B25003_001",
+                                                     ##collegedegree_c="B15003_022",
+                                                     ##degreeTotal_c="B15003_001",
+                                                     medianHSincome_c="B19013_001",
+                                                     medianHValue_c="B25077_001",
+                                                     medianGRent_c="B25064_001",
+                                                     Poverty_c="B17001_002",
+                                                     PovertyTotal_c="B17001_001",
+                                                     ForeignBorn_c="B05002_009",
+                                                     NavitityTotal_c="B05002_001",
+                                                     Profjobs_c="C24070_010",
+                                                     jobsTotal_c="C24070_001"
+                      ),year=2011,geometry = FALSE, 
+                      cache_table=T)
+
+###make the tract data into wide format from the long format
+tract_2011_noMOE=subset(tract_2011,select=-moe)
+tract_2011=spread(tract_2011_noMOE, key = variable, value = estimate)
+
+###make the county data into wide format from the long format
+county_2011_noMOE=subset(county_2011,select=-moe)
+county_2011=spread(county_2011_noMOE, key = variable, value = estimate)
+
+
+#######add Bachelor's degree manually (both for the county and tract level) from the census 2011 acs 5 year estimate survey 
+#######since there isn't any variable for the bachelor's degree for total population over 25 years old
+
+##for tract new variables
+tract_2011_web=read.csv("Data/R12919572_SL140.csv")
+tract_2011_manual=tract_2011_web %>%
+  subset(.data = tract_2011_web,select=c(Geo_NAME,SE_A12001_001,SE_A12001_005))
+##for county new variables
+county_2011_web=read.csv(file="Data/R12919572_SL050.csv")
+county_2011_manual=county_2011_web %>%
+  subset(.data = county_2011_web,select=c(Geo_NAME,SE_A12001_001,SE_A12001_005))
+
+##rename the column, get rid of the variable id
+tract_2011_manual=rename(tract_2011_manual, degreeTotal_t=SE_A12001_001,collegedegree_t=SE_A12001_005)
+county_2011_manual=rename(county_2011_manual, degreeTotal_c=SE_A12001_001,collegedegree_c=SE_A12001_005)
+
+###join the web tract and county education info with the original 2011 acs data
+tract_2011_join=left_join(tract_2011,tract_2011_manual,by=c("NAME"="Geo_NAME"))
+county_2011_join=left_join(county_2011,county_2011_manual,by=c("NAME"="Geo_NAME"))
+
+##merge the 2011 tract data with the 2011 county data
+#first create a county column in tract dataset.
+tract_2011_join$CountyGEOID=36029
+tract_2011_join$Year=2011
+#then merge the county dataset with the tract dataset
+data2011=merge(tract_2011_join,county_2011_join,
+               by.x = "CountyGEOID", by.y = "GEOID")
+str(data2011)
+#the difference between data2011 and tract_county_2011 is the previous one's variables' name don't have year included (in order to append different years' data together in a long format)
+
+###2010
+tract_2010 = get_acs(geography = "tract", state = "NY", 
+                     county = "Erie", variables = c(TotalP_t="B01001_001",
+                       TotalRace_t= "B02001_001",
+                                                    White_t="B02001_002",
+                                                    nonHispanicWhite_t="B03002_003",
+                                                    nonHispanicWhiteTotal_t="B03002_001",
+                                                    Homeowner_t="B25003_002",
+                                                    renterHS_t="B25003_003",
+                                                    TenureHSTotal_t="B25003_001",
+                                                    ###collegedegree_t="B15003_022",
+                                                    ###degreeTotal_t="B15003_001",
+                                                    # HSIncome_t=c("B19001_001","B19001_002","B19001_003","B19001_004","B19001_005","B19001_006","B19001_007","B19001_008","B19001_009"),##how to do it in a quicker way??
+                                                    medianHSincome_t="B19013_001",
+                                                    medianHValue_t="B25077_001",
+                                                    medianGRent_t="B25064_001",
+                                                    Poverty_t="B17001_002",
+                                                    PovertyTotal_t="B17001_001",
+                                                    ForeignBorn_t="B05002_009",
+                                                    NavitityTotal_t="B05002_001",
+                                                    Profjobs_t="C24070_010",
+                                                    jobsTotal_t="C24070_001"
+                     ),year=2010,geometry = TRUE, 
+                     cache_table=T)
+
+county_2010 = get_acs(geography = "county", state = "NY", 
+                      county = "Erie", variables = c(TotalP_c="B01001_001",
+                        TotalRace_c= "B02001_001",
+                                                     White_c="B02001_002",
+                                                     nonHispanicWhite_c="B03002_003",
+                                                     nonHispanicWhiteTotal_c="B03002_001",
+                                                     Homeowner_c="B25003_002",
+                                                     renterHS_c="B25003_003",
+                                                     TenureHSTotal_c="B25003_001",
+                                                     ###collegedegree_c="B15003_022",
+                                                     ###degreeTotal_c="B15003_001",
+                                                     # HSIncome_c=c("B19001_001","B19001_002","B19001_003","B19001_004","B19001_005","B19001_006","B19001_007","B19001_008","B19001_009"),##how to do it in a quicker way??
+                                                     medianHSincome_c="B19013_001",
+                                                     medianHValue_c="B25077_001",
+                                                     medianGRent_c="B25064_001",
+                                                     Poverty_c="B17001_002",
+                                                     PovertyTotal_c="B17001_001",
+                                                     ForeignBorn_c="B05002_009",
+                                                     NavitityTotal_c="B05002_001",
+                                                     Profjobs_c="C24070_010",
+                                                     jobsTotal_c="C24070_001"
+                      ),year=2010,geometry = FALSE, 
+                      cache_table=T)
+
+###make the tract data into wide format from the long format
+tract_2010_noMOE=subset(tract_2010,select=-moe)
+tract_2010=spread(tract_2010_noMOE, key = variable, value = estimate)
+
+###make the county data into wide format from the long format
+county_2010_noMOE=subset(county_2010,select=-moe)
+county_2010=spread(county_2010_noMOE, key = variable, value = estimate)
+
+#######add Bachelor's degree manually (both for the county and tract level) from the census 2010 acs 5 year estimate survey 
+#######since there isn't any variable for the bachelor's degree for total population over 25 years old
+
+##for tract new variables
+tract_2010_web=read.csv(file="Data/2010_tract_webinfo.csv")
+tract_2010_manual=tract_2010_web %>%
+  subset(.data = tract_2010_web,select=c(Geo_NAME,SE_A12001_001,SE_A12001_005))
+##for county new variables
+county_2010_web=read.csv(file="Data/2010_county_webinfo.csv")
+county_2010_manual=county_2010_web %>%
+  subset(.data = county_2010_web,select=c(Geo_NAME,SE_A12001_001,SE_A12001_005))
+
+##rename the column, get rid of the variable id
+tract_2010_manual=rename(tract_2010_manual, degreeTotal_t=SE_A12001_001,collegedegree_t=SE_A12001_005)
+county_2010_manual=rename(county_2010_manual, degreeTotal_c=SE_A12001_001,collegedegree_c=SE_A12001_005)
+
+###join the web tract and county education info with the original 2010 acs data
+tract_2010_join=left_join(tract_2010,tract_2010_manual,by=c("NAME"="Geo_NAME"))
+county_2010_join=left_join(county_2010,county_2010_manual,by=c("NAME"="Geo_NAME"))
+
+##merge the 2010 tract data with the 2010 county data
+#first create a county column in tract dataset.
+tract_2010_join$CountyGEOID=36029
+tract_2010_join$Year=2010
+# view(tract_2010_join)
+#then merge the county dataset with the tract dataset
+data2010=merge(tract_2010_join,county_2010_join,
+               by.x = "CountyGEOID", by.y = "GEOID")
+
+
+# append all year datasets together
+allyears=rbind(data2019,data2018,data2017,data2016,data2015, data2014, data2013, data2012, data2011, data2010)
+
+######################calculate the column percentages for county and tract levels
+allyears= transform(allyears,
+                    pctNonWhite_t=(TotalRace_t-White_t)/TotalRace_t*100,
+                    pctNonWhite_c=(TotalRace_c-White_c)/TotalRace_c*100,
+                    pctnonHisWhite_t=nonHispanicWhite_t/nonHispanicWhiteTotal_t*100,
+                    pctnonHisWhite_c=nonHispanicWhite_c/nonHispanicWhiteTotal_c*100,
+                    ###lowmedHSInc_tract is household income below 80% of the county median
+                    # low_medHSInc_c=0.8*medianHSincome_c,
+                    ###?????need to find out the low-income households for each year, and decide the category, then get the corresponding %
+                    pctForeign_born_t=ForeignBorn_t/NavitityTotal_t*100,
+                    pctForeign_born_c=ForeignBorn_c/NavitityTotal_c*100,
+                    pctBachelor_t=collegedegree_t/degreeTotal_t*100,
+                    pctBachelor_c=collegedegree_c/degreeTotal_c*100,
+                    pctHowners_t=Homeowner_t/TenureHSTotal_t*100,
+                    pctHowners_c=Homeowner_c/TenureHSTotal_c*100,
+                    pctRenters_t=renterHS_t/TenureHSTotal_t*100,
+                    pctRenters_c=renterHS_c/TenureHSTotal_c*100,
+                    pctProfjobs_t=Profjobs_t/jobsTotal_t*100,
+                    pctProfjobs_c=Profjobs_c/jobsTotal_c*100,
+                    pctPoverty_t=Poverty_t/PovertyTotal_t*100,
+                    pctPoverty_c=Poverty_c/PovertyTotal_c*100)
+
+head(allyears)
+glimpse(allyears$medianGRent_c)
+
+####compare the tract level data with the county level data, if true, then 1; if false, then 0.
+allyears=allyears %>% 
+  mutate("pctRenters_abovecounty" = ifelse(pctRenters_t>pctRenters_c,1,0),
+         "pctNonWhite_abovecounty"=ifelse(pctNonWhite_t>pctNonWhite_c,1,0),
+         "pctBach_belowcounty"=ifelse(pctBachelor_t<pctBachelor_c,1,0),
+         "pctForeignBorn_abovecounty"=ifelse(pctForeign_born_t>pctForeign_born_c,1,0),
+         "pctPoverty_abovecounty"=ifelse(pctPoverty_t>pctPoverty_c,1,0)) ###not using low income household anymore.
+# construct the Vulnerable index by adding the column from 59 to column 63, which are the above five indicators.
+allyears$Vuldegree <- rowSums(allyears[ , c(61:65)], na.rm=FALSE)
+allyears$Vul=ifelse(allyears$Vuldegree>=3,1,0)
+
 ```
 
-```{r, results='asis'}
-data %>% 
-  slice(1:10) %>% #show only 1:n rows
-  kable(digits=2,align="c")%>% #make table and round to two digits
-  kable_styling(bootstrap_options = 
-                  c("striped", "hover", "condensed", "responsive")) #apply other formatting
+```{r,message=F, warning=F,results='hide'}
+####getting across-time differences for counties and tracts
+year=rev(2010:2019)
+new.d.list=NULL
+length(year)
+for (i in 1:9){
+  a=year[i];b=year[i]-1
+  d1<-subset(allyears, Year==year[i]) %>% 
+    select(GEOID,pctHowners_t,pctHowners_c,pctNonWhite_t,pctNonWhite_c,pctBachelor_t,pctBachelor_c,medianHSincome_t,medianHSincome_c,pctForeign_born_t,pctForeign_born_c,pctProfjobs_t,pctProfjobs_c,
+           medianHValue_t,medianHValue_c,medianGRent_t,medianGRent_c)
+  d2=subset(allyears, Year==year[i]-1) %>% 
+    select(GEOID,pctHowners_t,pctHowners_c,pctNonWhite_t,pctNonWhite_c,pctBachelor_t,pctBachelor_c,medianHSincome_t,medianHSincome_c,pctForeign_born_t,pctForeign_born_c,pctProfjobs_t,pctProfjobs_c,
+           medianHValue_t,medianHValue_c,medianGRent_t,medianGRent_c)
+  d3=cbind(GEOID=d1[ ,1],d1[,-c(1)]-d2[,-c(1)]) ###subtract two datasets except the "GEOID" column
+  
+  colnames(d3)<-   ###need to rename the variables as td
+    paste(colnames(d3),"td",sep = "_")
+  
+  new.d.list[i]=list(d3)
+}
+change2019=data.frame(new.d.list[1])
+change2019$Year=2019
+
+change2018=data.frame(new.d.list[2])
+change2018$Year=2018
+
+change2017=data.frame(new.d.list[3])
+change2017$Year=2017
+
+change2016=data.frame(new.d.list[4])
+change2016$Year=2016
+
+change2015=data.frame(new.d.list[5])
+change2015$Year=2015
+
+change2014=data.frame(new.d.list[6])
+change2014$Year=2014
+
+change2013=data.frame(new.d.list[7])
+change2013$Year=2013
+
+change2012=data.frame(new.d.list[8])
+change2012$Year=2012
+
+change2011=data.frame(new.d.list[9])
+change2011$Year=2011
+
+#append all years'changes data together
+allchanges=rbind(change2019,change2018,change2017,change2016,change2015, change2014, change2013, change2012, change2011)
+
+##merge can also be merged in a loop format.
+allchanges_merge=left_join(x=allyears,y=allchanges,
+                           by=c("GEOID"= "GEOID_td","Year"="Year"))
+##drop the 2010 data since it doesn't have changes compared with the previous years (no 2009 data) by using subset
+#remove(allyearchanges_merge)
+yearswchanges=subset(allchanges_merge,Year!=2010)
+
+###Compare the time difference at tract level with the county level
+##2. Demographic changes between the year and the previous year
+yearswchanges=yearswchanges %>% 
+  mutate("pctchan_Howners_abovecounty" = ifelse(pctHowners_t_td>pctHowners_c_td,1,0),
+         "pctchan_nonHisWhite_abcounty"=ifelse(pctNonWhite_t_td>pctNonWhite_c_td,1,0),
+         "pctchan_Bach_abcounty"=ifelse(pctBachelor_t_td<pctBachelor_c_td,1,0),
+         "change_medHSInc_abcounty"=ifelse(medianHSincome_t_td>medianHSincome_c_td,1,0),
+         "pctchange_ForeignB_abcounty"=ifelse(pctForeign_born_t_td>pctForeign_born_c_td,1,0),
+         "pctchange_Prof_abovecounty"=ifelse(pctProfjobs_t_td>pctProfjobs_c_td,1,0))
+
+##construct the second gentrification index: Dem changes
+yearswchanges$Demdegree <- rowSums(yearswchanges[ , c(84:89)], na.rm=FALSE)
+yearswchanges$WhiteandBachIncrease=rowSums(yearswchanges[,c(85,86)], na.rm=FALSE)
+yearswchanges=yearswchanges %>% 
+  # mutate(Dem=ifelse(Demdegree>=4|WhiteandBachIncrease==2,1,0))
+  mutate(Dem=ifelse(Demdegree>=4|WhiteandBachIncrease==2,1,0))
+
+##3. Housing Market condition
+yearswchanges=yearswchanges %>% 
+  mutate("change_medHSValue_abcounty"=ifelse(medianHValue_t_td>medianHValue_c_td,1,0),
+         "change_medGrossRent_abcounty"=ifelse(medianGRent_t_td>medianGRent_c_td,1,0))
+##construct the third gentrification index: Housing Market Condition Changes
+yearswchanges$HousingMarketDegree=rowSums(yearswchanges[ , c(93:94)], na.rm=FALSE)
+yearswchanges=yearswchanges %>% 
+  mutate("HousingMarket"=ifelse(HousingMarketDegree==2,1,0))
+
 ```
+```{r,message=F, warning=F,results='hide'}
+################import the crime data
+crime_initial=read_dta(file = "Data/BuffaloCrime_tract_since2011.dta") %>% 
+  select(address,zip,latitude,longitude,day_of_week,parent_incident_type,neighborhood,censustract2010,crimedate,crimetime)
+
+####getting crime data ready, for having GEOID and have the Year column for merge
+##1.set the tract number as numeric to become the same version of GEOID
+crime_initial$censustract2010=
+  as.numeric(crime_initial$censustract2010,na.rm = TRUE)
+class(crime_initial$censustract2010)
+
+crime1 =
+  transform(crime_initial,
+            GEOID=censustract2010*100+36029000000,na.rm = FALSE
+  )
+###2. get the Year column
+class(crime1$crimedate)
+crime1$Year <- as.numeric(format(crime1$crimedate,'%Y'))
+
+####only select the tract number for merge with the main dataset
+crime_formerge=crime1 %>% 
+  select(day_of_week,parent_incident_type,GEOID,censustract2010,Year,latitude,longitude)
+crime_formerge$GEOID=as.character(crime_formerge$GEOID)
+
+####merge the main dataset with the crime dataset
+gentri_crime_tract=left_join(yearswchanges,crime_formerge,c("GEOID","Year"))
+
+v1=
+  c("GEOID","Year","Vul","Dem","Demdegree","WhiteandBachIncrease","HousingMarket","medianGRent_c","medianGRent_t","medianHValue_c","medianHValue_t","geometry")
+genD=yearswchanges[,v1]
+genD=genD %>% 
+  mutate("Susceptible"=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         "Susceptible"=ifelse(genD$Vul==1&genD$Dem==0&genD$HousingMarket==0&(medianGRent_t<medianGRent_c)&(genD$medianHValue_t<genD$medianHValue_c),1,Susceptible),
+         "Early_Prop"=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         "Early_Prop"=ifelse(genD$Vul==1 &genD$Dem==0&genD$HousingMarket==1&(medianGRent_t<medianGRent_c)&(genD$medianHValue_t<genD$medianHValue_c),1,Early_Prop),
+         "Early_Demo"=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         "Early_Demo"=ifelse(genD$Vul==1 &genD$Dem==1&genD$HousingMarket==0&genD$medianGRent_t<genD$medianGRent_c,1,Early_Demo),
+         "Early_Demo"=ifelse(genD$Vul==1 &genD$Dem==1&genD$HousingMarket==0&genD$medianHValue_t<genD$medianHValue_c,1,Early_Demo),
+         "Middle"=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         "Middle"=ifelse(genD$Vul==1 &genD$Dem==1&genD$HousingMarket==1&(medianGRent_t<medianGRent_c)&(genD$medianHValue_t<genD$medianHValue_c),1,Middle),
+         "Late"=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         "Late"=ifelse(genD$Vul==1 &genD$Dem==1&genD$HousingMarket==0&(medianGRent_t>medianGRent_c)|(genD$medianHValue_t>genD$medianHValue_c) ,1,Late),
+         # "ongoingGen"=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         # "ongoingGen"=ifelse(genD$Vul==0 &genD$WhiteandBachIncrease==2&genD$HousingMarket==1 ,1,ongoingGen),
+         Gentrified=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+         # Gentrified=ifelse(Vul==0 &Dem==1&HousingMarket==0&(medianGRent_t>medianGRent_c)|(genD$medianHValue_t>genD$medianHValue_c),1,Gentrified),
+         # Gentrified=ifelse(genD$Vul==0 &genD$Dem==1&(genD$medianHValue_t>genD$medianHValue_c),1,Gentrified),
+         Gentrified=ifelse(genD$Vul==0 &genD$Demdegree>=3&HousingMarket==0&(genD$medianGRent_t>genD$medianGRent_c)|(genD$medianHValue_t>genD$medianHValue_c),1,Gentrified),
+         Gentrified=ifelse(genD$Vul==0 &genD$WhiteandBachIncrease==1&HousingMarket==0&(genD$medianGRent_t>genD$medianGRent_c)|(genD$medianHValue_t>genD$medianHValue_c),1,Gentrified))
+         
+# genD=genD %>% 
+#   mutate(NoGen=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
+#          NoGen=ifelse(genD$Susceptible==0&genD$Early_Prop==0&genD$Early_Demo==0&Middle==0&genD$Late==0&genD$ongoingGen==0&genD$Gentrified==0,1,NoGen)
+#   )
+genD= genD%>%
+  mutate("GenDegree1"=NA) %>%
+  mutate(
+    "GenDegree1"=ifelse(Susceptible==1,1,GenDegree1),
+    "GenDegree1"=ifelse(Early_Prop==1,2,GenDegree1),
+    "GenDegree1"=ifelse(Early_Demo==1,3,GenDegree1),
+    "GenDegree1"=ifelse(Middle==1,4,GenDegree1),
+    "GenDegree1"=ifelse(Late==1,5,GenDegree1),
+    "GenDegree1"=ifelse(Gentrified==1,6,GenDegree1)) %>% 
+  mutate("GenDegree"=NA) %>%
+  mutate(
+    # "GenDegree"=ifelse(NoGen==1,0,GenDegree),
+         "GenDegree"=ifelse(Susceptible==1,1,GenDegree),
+         "GenDegree"=ifelse(Early_Prop==1,2,GenDegree),
+         "GenDegree"=ifelse(Early_Demo==1,2,GenDegree),
+         "GenDegree"=ifelse(Middle==1,3,GenDegree),
+         "GenDegree"=ifelse(Late==1,4,GenDegree),
+         "GenDegree"=ifelse(Gentrified==1,5,GenDegree)) %>% 
+  mutate("GenDegree2"=NA) %>%
+  mutate(
+    "GenDegree2"=ifelse(Susceptible==1,1,GenDegree2),
+    "GenDegree2"=ifelse(Early_Prop==1,2,GenDegree2),
+    "GenDegree2"=ifelse(Early_Demo==1,2,GenDegree2),
+    "GenDegree2"=ifelse(Middle==1,2,GenDegree2),
+    "GenDegree2"=ifelse(Late==1,2,GenDegree2),
+    "GenDegree2"=ifelse(Gentrified==1,3,GenDegree2))
+
+genD_formerge = genD%>%
+  select(GEOID,Year,GenDegree,GenDegree1,GenDegree2,geometry) %>% 
+  st_as_sf()
+gentri_crime_tract_1=inner_join(gentri_crime_tract,genD_formerge,c("GEOID","Year","geometry"))
+  ##only include the tracts have crime data (Buffalo), drop NA
+gentri_crime_tract_1=gentri_crime_tract_1[complete.cases(gentri_crime_tract_1[,"parent_incident_type"]),]
+
+        
+```
+
+
 
 Add any additional processing steps here.
 
@@ -79,12 +545,218 @@ Tables and figures (maps and other graphics) are carefully planned to convey the
 
 Show tables, plots, etc. and describe them.
 
-```{r, fig.width=6, fig.height=3, fig.cap="Map of completely random data"}
-m <- leaflet(data) %>% 
-  addTiles() %>% 
-  addCircleMarkers(~x, ~y, radius = ~size,color = ~as.factor(category)) %>% 
-  addPopups(~x[2], ~y[2], "Random popup")
-m  # a map with the default OSM tile layer
+```{r}
+ ####for quick summary
+gentri_crime_quick=gentri_crime_tract_1 %>% 
+  select(GEOID,TotalP_t,Vul,Dem,HousingMarket,GenDegree,Year,day_of_week,parent_incident_type,geometry,NAME.x,geometry)
+# 
+#get the crime rate for each type
+try=gentri_crime_quick %>%
+  group_by(GEOID,Year,GenDegree,Vul,Dem,HousingMarket,TotalP_t) %>%
+  summarise(Total_count=n(),
+            ###Whe getting a rate for every incident? but not right with the sum function?? Why use mean??
+            CrimeRate=mean(Total_count/TotalP_t*1000), ## crime rate every 1000 persons for each tract 
+            # Crime_type=(parent_incident_type),
+            see=sum(parent_incident_type=="Assault"),
+            Assault=mean(sum(parent_incident_type=="Assault",na.rm = FALSE)/TotalP_t*1000),#Assault rate
+            Break_and_Enter=mean(sum(parent_incident_type=="Breaking & Entering")/TotalP_t*1000),
+            Homicide=mean(sum(parent_incident_type=="Homicide")/TotalP_t*1000),
+            Robbery=mean(sum(parent_incident_type=="Robbery")/TotalP_t*1000),
+            SexualAssault=mean(sum(parent_incident_type=="Sexual Assault")/TotalP_t*1000),
+            SexualOffense=mean(sum(parent_incident_type=="Sexual Offense")/TotalP_t*1000),
+            OtherSexualOff=mean(sum(parent_incident_type=="Other Sexual Offense")/TotalP_t*1000),
+            Theft=mean(sum(parent_incident_type=="Theft")/TotalP_t*1000),
+            TheftVehicle=mean(sum(parent_incident_type=="Theft of Vehicle")/TotalP_t*1000),
+            
+            )
+# #Then we run a correlation test for each nested tibble using purrr::map:
+forcorr=gentri_crime_quick %>%
+  group_by(GEOID,Year,parent_incident_type,GenDegree,Vul,Dem,HousingMarket) %>%
+  summarise(count=n(),
+            rate=mean(count/TotalP_t*1000)
+  )
+nested=forcorr %>%
+  nest(data=-parent_incident_type)
+nested %>%
+  mutate(test = map(data, ~ cor.test(.x$GenDegree, .x$rate)))
+# This results in a list-column of S3 objects. We want to tidy each of the objects, which we can also do with map.
+library(broom)
+correlation=nested %>%
+  mutate(
+    cortest = map(data, ~ cor.test(.x$GenDegree, .x$rate)), # S3 list-col
+    tidied = map(cortest, tidy)
+  ) %>%
+  unnest(tidied)
+
+correlation=correlation %>% 
+  # filter(p.value<.05) %>%
+  select(c(parent_incident_type,estimate,p.value)) %>% 
+  mutate(correlation=estimate) 
+kable(correlation) %>%
+  kable_styling() %>%
+  save_kable(file = "Output/correlation.png")
+correlation
+
+
+```
+
+```{r}
+# 
+cor.test(try$CrimeRate,try$Vul)
+cor.test(try$CrimeRate,try$Dem)
+cor.test(try$CrimeRate,try$HousingMarket)
+
+
+try$tract.f=as.factor(try$GEOID)
+#model
+
+#between difference without controlling it
+a=lm(Break_and_Enter~GenDegree,data=try)
+summary(a)
+
+##control for all the between census tract differences (just look at within difference)
+b=lm(Break_and_Enter~GenDegree+tract.f,data=try)
+summary(b)
+
+```
+```{r,message=FALSE,warning=FALSE}
+####mapping
+mapdf=gentri_crime_tract_1 %>% 
+  mutate("parent_incident_type"=  as.character(parent_incident_type))
+mapdf=gentri_crime_tract_1 %>% 
+  filter(Year==2019)  %>% 
+  
+  group_by(GEOID,NAME.x,Year,GenDegree2,GenDegree1,GenDegree,latitude,longitude,parent_incident_type) %>% 
+  summarise(geometry=geometry,
+            count=n(),
+            Assault=sum(parent_incident_type=="Assault",na.rm = FALSE),
+            Break_and_Enter=sum(parent_incident_type=="Breaking & Entering"),
+            Homicide=sum(parent_incident_type=="Homicide"),
+            Robbery=sum(parent_incident_type=="Robbery"),
+            SexualAssault=sum(parent_incident_type=="Sexual Assault"),
+            SexualOffense=sum(parent_incident_type=="Sexual Offense"),
+            OtherSexualOff=sum(parent_incident_type=="Other Sexual Offense"),
+            Theft=sum(parent_incident_type=="Theft"),
+            TheftVehicle=sum(parent_incident_type=="Theft of Vehicle")
+            
+  ) %>% 
+  st_as_sf()
+
+# mapdf %>% 
+#   group_by(GEOID) %>% 
+#   summarise(count=n())
+
+
+map2015_1=gentri_crime_tract_1 %>% 
+  mutate("parent_incident_type"=  as.character(parent_incident_type)) %>% 
+  filter(Year==2015) %>% 
+  select(GEOID,Year,GenDegree,GenDegree1,GenDegree2,geometry) %>% 
+  st_as_sf()
+# group_by(GEOID) %>% 
+#   summarise(count=n())
+
+# class(map2015_1)
+map2011_1=gentri_crime_tract_1 %>% 
+  filter(Year==2011) %>% 
+  st_as_sf()
+
+ggplot(data = map2011_1, aes(fill=GenDegree2)) + geom_sf()+
+  scale_fill_viridis(option = "viridis") +
+  scale_color_viridis(option = "viridis")+
+  labs(title =map2011_1$Year)
+
+ # geom_label(aes(label=substr(GEOID,6,11),x,y))
+
+ggplot(data = map2015_1, aes(fill=GenDegree2)) + geom_sf()+
+  
+  scale_fill_viridis(option = "viridis") +
+  scale_color_viridis(option = "viridis")+
+  labs(title =map2015_1$Year)
+
+ggplot(data = mapdf, aes(fill=GenDegree2)) + geom_sf()+
+  
+  scale_fill_viridis(option = "viridis") +
+  scale_color_viridis(option = "viridis")+
+  labs(title =mapdf$Year)
+
+```
+
+
+
+```{r, warning=FALSE,fig.width=6, fig.height=3, fig.cap="Gentrification and Crime map"}
+pal <- colorFactor(palette =  c("red", "blue", "#9b4a11","#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02"), 
+                   levels = c("Assault", "Break_and_Enter", "Homicide","Robbery","SexualAssault","SexualOffense","OtherSexualOff","Theft","TheftVehicle"))
+
+pal_Gen = colorNumeric(palette="viridis",domain=1:7)
+
+Assault=as.data.frame(filter(mapdf,parent_incident_type=="Assault"))
+Break_and_Enter=as.data.frame(filter(mapdf,parent_incident_type=="Breaking & Entering"))
+Homicide=as.data.frame(filter(mapdf,parent_incident_type=="Homicide"))
+Robbery=as.data.frame(filter(mapdf,parent_incident_type=="Robbery"))
+SexualAssault=as.data.frame(filter(mapdf,parent_incident_type=="Sexual Assault"))
+SexualOffense=as.data.frame(filter(mapdf,parent_incident_type=="Sexual Offense"))
+OtherSexualOff=as.data.frame(filter(mapdf,parent_incident_type=="Other Sexual Offense"))
+Theft=as.data.frame(filter(mapdf,parent_incident_type=="Theft"))
+TheftVehicle=as.data.frame(filter(mapdf,parent_incident_type=="Theft of Vehicle"))
+
+# ??why polygons disappear?
+# ggplot(mapdf,aes(fill=GenDegree1))+
+#   geom_sf(data=mapdf)+
+#   geom_point(data=mapdf,aes(y=latitude,x=longitude,color=parent_incident_type))+
+#   facet_wrap(~parent_incident_type)
+
+map2019=leaflet() %>% 
+  # addProviderTiles("CartoDB")  %>%
+  setView(lat = 42.887, lng = -78.85, zoom = 12) %>% 
+  addTiles(group = "OSM") %>% 
+  addProviderTiles("CartoDB", group = "Carto") %>% 
+  addProviderTiles("Esri", group = "Esri") %>% 
+  addPolygons(data=mapdf, fillColor=~pal_Gen(GenDegree2) ,weight = 1, smoothFactor = 0.5,
+              opacity = 1.0) %>%
+  addCircleMarkers(data=Assault,lng = Assault$longitude, lat = Assault$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("Assault"),
+                   group = "Assault"
+  ) %>% 
+  addCircleMarkers(data=Break_and_Enter,lng = Break_and_Enter$longitude, lat = Break_and_Enter$latitude,radius = 0.001,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("Break_and_Enter"),
+                   group = "Break_and_Enter") %>% 
+  addCircleMarkers(data=Homicide,lng = Homicide$longitude, lat = Homicide$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("Homicide"),
+                   group = "Homicide") %>%
+  addCircleMarkers(data=Robbery,lng = Robbery$longitude, lat = Robbery$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("Robbery"),
+                   group = "Robbery") %>%
+  addCircleMarkers(data=SexualAssault,lng = SexualAssault$longitude, lat = SexualAssault$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("SexualAssault"),
+                   group = "SexualAssault") %>%
+  addCircleMarkers(data=SexualOffense,lng = SexualOffense$longitude, lat = SexualOffense$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("SexualOffense"),
+                   group = "SexualOffense") %>%
+  addCircleMarkers(data=OtherSexualOff,lng = OtherSexualOff$longitude, lat = OtherSexualOff$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("OtherSexualOff"),
+                   group = "OtherSexualOff") %>%
+  addCircleMarkers(data=Theft,lng = Theft$longitude, lat = Theft$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("Theft"),
+                   group = "Theft") %>%
+  addCircleMarkers(data=TheftVehicle,lng = TheftVehicle$longitude, lat = TheftVehicle$latitude,radius = 0.01,
+                   label = ~paste0(parent_incident_type, " (", count, ")"),
+                   color = ~pal("TheftVehicle"),
+                   group = "TheftVehicle") %>%
+  
+  
+  addLayersControl(
+    baseGroups = c("OSM", "Carto", "Esri"),
+    overlayGroups = c("Assault", "Break_and_Enter","Homicide","Robbery","SexualAssault","SexualOffense","OtherSexualOff","Theft","TheftVehicle"))
+
+map2019
 ```
 
 
