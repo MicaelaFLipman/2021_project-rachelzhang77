@@ -42,7 +42,8 @@ library(kableExtra)
 
 # census_api_key ("7e9b9dfdae5d56fbf2a5c8e243c74bccbe74af98", install=TRUE,overwrite=TRUE)
 
-census_api_key(Sys.getenv("CENSUS_API_KEY"))
+census_api_key(Sys.getenv("CENSUS_API_KEY"),install=TRUE, overwrite = TRUE)
+readRenviron("~/.Renviron")
 
 ```
 
