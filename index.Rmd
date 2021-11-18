@@ -1,7 +1,7 @@
 ---
 title: "Gentrification and Crime in Buffalo, NY"
 author: Rachel Zhang
-subtitle: Subtitle here if desired
+output:
 ---
 
 # Introduction
@@ -38,7 +38,8 @@ library(leaflet)
 library(tidyr)
 library(kableExtra)
 
-census_api_key ("7e9b9dfdae5d56fbf2a5c8e243c74bccbe74af98", install=TRUE,overwrite = TRUE)
+
+census_api_key(Sys.setenv("CENSUS_API_KEY"))
 
 ```
 
@@ -660,7 +661,8 @@ map2011_1=gentri_crime_tract_1 %>%
   filter(Year==2011) %>% 
   st_as_sf()
 
-ggplot(data = map2011_1, aes(fill=GenDegree2)) + geom_sf()+
+library(ggplot2)
+gen2011=ggplot(data = map2011_1, aes(fill=GenDegree2)) + geom_sf()+
   scale_fill_viridis(option = "viridis") +
   scale_color_viridis(option = "viridis")+
   labs(title =map2011_1$Year)
@@ -687,7 +689,7 @@ ggplot(data = mapdf, aes(fill=GenDegree2)) + geom_sf()+
 pal <- colorFactor(palette =  c("red", "blue", "#9b4a11","#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02"), 
                    levels = c("Assault", "Break_and_Enter", "Homicide","Robbery","SexualAssault","SexualOffense","OtherSexualOff","Theft","TheftVehicle"))
 
-pal_Gen = colorNumeric(palette="viridis",domain=1:7)
+pal_Gen = colorNumeric(palette="viridis",domain=1:3)
 
 Assault=as.data.frame(filter(mapdf,parent_incident_type=="Assault"))
 Break_and_Enter=as.data.frame(filter(mapdf,parent_incident_type=="Breaking & Entering"))
@@ -760,11 +762,7 @@ map2019
 ```
 
 
-```{r}
-data %>% 
-  ggplot(aes(x=x,y=y,col=category))+
-  geom_point()
-```
+
 
 # Conclusions
 
