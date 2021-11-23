@@ -48,7 +48,7 @@ readRenviron("~/.Renviron")
 ```
 
 
-```{r, message=F, warning=F,results='hide'}
+```{r, message=F, warning=F}
 library(tidyverse)
 library(leaflet)
 library(kableExtra)
@@ -56,7 +56,7 @@ knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling
 ```
 
 ## Download and clean all required data
-```{r,message=F, warning=F}
+```{r,message=F, warning=F,results="hide"}
 year=2012:2019
 tract.list=NULL
 county.list=NULL
@@ -131,12 +131,12 @@ for (i in 1:8){
   #then merge the county dataset with the tract dataset
   d_merge=merge(d1,d2,
                 by.x = "CountyGEOID", by.y = "GEOID")
-  str(d_merge)
+  # str(d_merge)
   
   tract_county_merge.list[i]=list(d_merge)
 }
-
-
+```
+```{r}
 ##change it to dataframe
 data2012=data.frame(tract_county_merge.list[1])
 data2013=data.frame(tract_county_merge.list[2])
@@ -147,6 +147,9 @@ data2017=data.frame(tract_county_merge.list[6])
 data2018=data.frame(tract_county_merge.list[7])
 data2019=data.frame(tract_county_merge.list[8])
 
+```
+
+```{r,message=F, warning=F,results="hide"}
 #####add the 2011&2010 data since they lack variables about education, I manually imported them from social explorer (https://www.socialexplorer.com/reports-beta/report/a5c293b8-2709-11ec-aafd-132ea339dce2).
 ###2011
 tract_2011 = get_acs(geography = "tract", state = "NY", 
@@ -203,8 +206,9 @@ tract_2011=spread(tract_2011_noMOE, key = variable, value = estimate)
 ###make the county data into wide format from the long format
 county_2011_noMOE=subset(county_2011,select=-moe)
 county_2011=spread(county_2011_noMOE, key = variable, value = estimate)
+```
 
-
+```{r,message=F, warning=F,results="hide"}
 #######add Bachelor's degree manually (both for the county and tract level) from the census 2011 acs 5 year estimate survey 
 #######since there isn't any variable for the bachelor's degree for total population over 25 years old
 
@@ -225,6 +229,9 @@ county_2011_manual=rename(county_2011_manual, degreeTotal_c=SE_A12001_001,colleg
 tract_2011_join=left_join(tract_2011,tract_2011_manual,by=c("NAME"="Geo_NAME"))
 county_2011_join=left_join(county_2011,county_2011_manual,by=c("NAME"="Geo_NAME"))
 
+```
+
+```{r,message=F, warning=F,results="hide"}
 ##merge the 2011 tract data with the 2011 county data
 #first create a county column in tract dataset.
 tract_2011_join$CountyGEOID=36029
@@ -232,9 +239,11 @@ tract_2011_join$Year=2011
 #then merge the county dataset with the tract dataset
 data2011=merge(tract_2011_join,county_2011_join,
                by.x = "CountyGEOID", by.y = "GEOID")
-str(data2011)
+# str(data2011)
 #the difference between data2011 and tract_county_2011 is the previous one's variables' name don't have year included (in order to append different years' data together in a long format)
+```
 
+```{r,message=F, warning=F,results="hide"}
 ###2010
 tract_2010 = get_acs(geography = "tract", state = "NY", 
                      county = "Erie", variables = c(TotalP_t="B01001_001",
@@ -283,7 +292,9 @@ county_2010 = get_acs(geography = "county", state = "NY",
                                                      jobsTotal_c="C24070_001"
                       ),year=2010,geometry = FALSE, 
                       cache_table=T)
+```
 
+```{r,message=F, warning=F,results="hide"}
 ###make the tract data into wide format from the long format
 tract_2010_noMOE=subset(tract_2010,select=-moe)
 tract_2010=spread(tract_2010_noMOE, key = variable, value = estimate)
@@ -291,7 +302,9 @@ tract_2010=spread(tract_2010_noMOE, key = variable, value = estimate)
 ###make the county data into wide format from the long format
 county_2010_noMOE=subset(county_2010,select=-moe)
 county_2010=spread(county_2010_noMOE, key = variable, value = estimate)
+```
 
+```{r,message=F, warning=F,results="hide"}
 #######add Bachelor's degree manually (both for the county and tract level) from the census 2010 acs 5 year estimate survey 
 #######since there isn't any variable for the bachelor's degree for total population over 25 years old
 
@@ -307,7 +320,9 @@ county_2010_manual=county_2010_web %>%
 ##rename the column, get rid of the variable id
 tract_2010_manual=rename(tract_2010_manual, degreeTotal_t=SE_A12001_001,collegedegree_t=SE_A12001_005)
 county_2010_manual=rename(county_2010_manual, degreeTotal_c=SE_A12001_001,collegedegree_c=SE_A12001_005)
+```
 
+```{r,message=F, warning=F,results="hide"}
 ###join the web tract and county education info with the original 2010 acs data
 tract_2010_join=left_join(tract_2010,tract_2010_manual,by=c("NAME"="Geo_NAME"))
 county_2010_join=left_join(county_2010,county_2010_manual,by=c("NAME"="Geo_NAME"))
@@ -321,10 +336,14 @@ tract_2010_join$Year=2010
 data2010=merge(tract_2010_join,county_2010_join,
                by.x = "CountyGEOID", by.y = "GEOID")
 
+```
 
+```{r,message=F, warning=F,results="hide"}
 # append all year datasets together
 allyears=rbind(data2019,data2018,data2017,data2016,data2015, data2014, data2013, data2012, data2011, data2010)
+```
 
+```{r,message=F, warning=F,results="hide"}
 ######################calculate the column percentages for county and tract levels
 allyears= transform(allyears,
                     pctNonWhite_t=(TotalRace_t-White_t)/TotalRace_t*100,
@@ -347,9 +366,11 @@ allyears= transform(allyears,
                     pctPoverty_t=Poverty_t/PovertyTotal_t*100,
                     pctPoverty_c=Poverty_c/PovertyTotal_c*100)
 
-head(allyears)
-glimpse(allyears$medianGRent_c)
+# head(allyears)
+# glimpse(allyears$medianGRent_c)
+```
 
+```{r,message=F, warning=F,results="hide"}
 ####compare the tract level data with the county level data, if true, then 1; if false, then 0.
 allyears=allyears %>% 
   mutate("pctRenters_abovecounty" = ifelse(pctRenters_t>pctRenters_c,1,0),
@@ -419,7 +440,9 @@ allchanges_merge=left_join(x=allyears,y=allchanges,
 ##drop the 2010 data since it doesn't have changes compared with the previous years (no 2009 data) by using subset
 #remove(allyearchanges_merge)
 yearswchanges=subset(allchanges_merge,Year!=2010)
+```
 
+```{r,message=F, warning=F,results="hide"}
 ###Compare the time difference at tract level with the county level
 ##2. Demographic changes between the year and the previous year
 yearswchanges=yearswchanges %>% 
@@ -497,10 +520,7 @@ genD=genD %>%
          Gentrified=ifelse(genD$Vul==0 &genD$Demdegree>=3&HousingMarket==0&(genD$medianGRent_t>genD$medianGRent_c)|(genD$medianHValue_t>genD$medianHValue_c),1,Gentrified),
          Gentrified=ifelse(genD$Vul==0 &genD$WhiteandBachIncrease==1&HousingMarket==0&(genD$medianGRent_t>genD$medianGRent_c)|(genD$medianHValue_t>genD$medianHValue_c),1,Gentrified))
          
-# genD=genD %>% 
-#   mutate(NoGen=ifelse(is.na(Vul)|is.na(Dem)|is.na(HousingMarket),NA,0),
-#          NoGen=ifelse(genD$Susceptible==0&genD$Early_Prop==0&genD$Early_Demo==0&Middle==0&genD$Late==0&genD$ongoingGen==0&genD$Gentrified==0,1,NoGen)
-#   )
+
 genD= genD%>%
   mutate("GenDegree1"=NA) %>%
   mutate(
@@ -616,12 +636,66 @@ try$tract.f=as.factor(try$GEOID)
 #model
 
 #between difference without controlling it
-a=lm(Break_and_Enter~GenDegree,data=try)
-summary(a)
+#run the crime rate after logged
+forcorr$rate.log=log(forcorr$rate) #logged the crime rate
+# #Then we run a linear regression test for each nested tibble using purrr::map:
+lmnested.log=forcorr %>%
+  nest(data=-parent_incident_type)
+lmnested.log %>%
+  mutate(lmmodel = map(data, ~ lm(data=lmnested.log,.x$rate.log~.x$GenDegree)))
+# This results in a list-column of S3 objects. We want to tidy each of the objects, which we can also do with map.
+library(broom)
+lm.log=lmnested.log %>%
+  mutate(
+    lmReg.log = map(data, ~ lm(data=.,rate.log~GenDegree)), # S3 list-col
+    tidied = map(lmReg.log, tidy)
+  ) %>%
+  unnest(tidied)
 
+##select only the slope
+lmslope.log=lm.log %>% 
+  filter(term=="GenDegree") %>% 
+  rename(c(slope=estimate,crime_type=parent_incident_type)) %>% 
+  # filter(p.value<.05) %>%
+  select(-c(data,lmReg.log))
+ # mutate(=estimate)
+
+kable(lmslope.log) %>%
+  kable_styling() %>%
+  save_kable(file = "Output/lmslope.log_betweendifference.png")
+```
+
+```{r}
 ##control for all the between census tract differences (just look at within difference)
-b=lm(Break_and_Enter~GenDegree+tract.f,data=try)
-summary(b)
+###logged the crime rate within-tract linear regression
+# #Then we run a within-tract linear regression test for each nested tibble using purrr::map, controlling between tract differences (only look at within differences)
+forcorr$tract.f=as.factor(forcorr$GEOID)
+lmnested_within.log=forcorr %>%
+  nest(data=-parent_incident_type)
+lmnested_within.log %>%
+  mutate(lmmodel = map(data, ~ lm(data=.,.x$rate.log~.x$GenDegree+.x$tract.f)))
+# This results in a list-column of S3 objects. We want to tidy each of the objects, which we can also do with map.
+library(broom)
+lm_within.log=lmnested_within.log %>%
+  mutate(
+    lmReg_within.log = map(data, ~ lm(data=.,rate.log~GenDegree+tract.f)), # S3 list-col
+    tidied = map(lmReg_within.log, tidy)
+  ) %>%
+  unnest(tidied)
+
+##select only the slope
+lmslope_within.log=lm_within.log %>% 
+  filter(term=="GenDegree") %>% 
+  rename(c(slope=estimate,crime_type=parent_incident_type)) %>% 
+  # filter(p.value<.05) %>%
+  select(-c(data,lmReg_within.log))
+# mutate(=estimate) 
+
+
+kable(lmslope_within.log) %>%
+  kable_styling() %>%
+  save_kable(file = "Output/lmslope.log_withindifference.png")
+
 
 ```
 ```{r,message=FALSE,warning=FALSE}
